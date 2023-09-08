@@ -6,7 +6,6 @@ from typing import Union, List, Set
 
 import pkg_resources
 from functools import lru_cache
-from pyphen import Pyphen
 
 langs = {
     "en": {  # Default config
@@ -194,7 +193,6 @@ class textstatistics:
 
         """
         self.__lang = lang
-        self.pyphen = Pyphen(lang=self.__lang)
         self._cache_clear()
 
     @lru_cache(maxsize=128)
@@ -321,45 +319,6 @@ class textstatistics:
         """
         count = len([word for word in self.remove_punctuation(text).split() if
                      len(word) <= max_size])
-        return count
-
-    @lru_cache(maxsize=128)
-    def syllable_count(self, text: str, lang: Union[str, None] = None) -> int:
-        """Calculate syllable words in a text using pyphen.
-
-        Parameters
-        ----------
-        text : str
-            A text string.
-        lang : str or None
-            The language of the text.
-
-            .. deprecated:: 0.5.7
-
-        Returns
-        -------
-        int
-            Number of syllables in `text`.
-        """
-        if lang:
-            warnings.warn(
-                "The 'lang' argument has been moved to "
-                "'textstat.set_lang(<lang>)'. This argument will be removed "
-                "in the future.",
-                DeprecationWarning
-            )
-        if isinstance(text, bytes):
-            text = text.decode(self.text_encoding)
-
-        text = text.lower()
-        text = self.remove_punctuation(text)
-
-        if not text:
-            return 0
-
-        count = 0
-        for word in text.split():
-            count += len(self.pyphen.positions(word)) + 1
         return count
 
     @lru_cache(maxsize=128)

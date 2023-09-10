@@ -95,6 +95,24 @@ class textstatistics:
     __rm_apostrophe = True
     text_encoding = "utf-8"
 
+    __sylcount_vowel_runs = re.compile("[aeiouy]+", flags=re.I)
+    __sylcount_exceptions = re.compile(
+        # fixes trailing e issues:
+        # smite, scared
+        "[^aeiou]e[sd]?$|"
+        # fixes adverbs:
+        # nicely
+        + "[^e]ely$",
+        flags=re.I)
+    __sylcount_additional = re.compile(
+        # fixes incorrect subtractions from exceptions:
+        # smile, scarred, raises, fated
+        "[^aeioulr][lr]e[sd]?$|[csgz]es$|[td]ed$|"
+        # fixes miscellaneous issues:
+        # flying, piano, video, prism, fire, evaluate
+        + ".y[aeiou]|ia(?!n$)|eo|ism$|[^aeiou]ire$|[^gq]ua",
+        flags=re.I)
+
     def __init__(self):
         self.set_lang(self.__lang)
 
@@ -319,6 +337,48 @@ class textstatistics:
         """
         count = len([word for word in self.remove_punctuation(text).split() if
                      len(word) <= max_size])
+        return count
+
+    @lru_cache(maxsize=128)
+    def syllable_count(self, text: str, lang: Union[str, None] = None) -> int:
+        """Calculate syllable words in a text using pyphen.
+
+        Parameters
+        ----------
+        text : str
+            A text string.
+        lang : str or None
+            The language of the text.
+
+            .. deprecated:: 0.5.7
+
+        Returns
+        -------
+        int
+            Number of syllables in `text`.
+        """
+        if lang:
+            warnings.warn(
+                "The 'lang' argument has been moved to "
+                "'textstat.set_lang(<lang>)'. This argument will be removed "
+                "in the future.",
+                DeprecationWarning
+            )
+        if isinstance(text, bytes):
+            text = text.decode(self.text_encoding)
+
+        text = text.lower()
+        text = self.remove_punctuation(text)
+
+        if not text:
+            return 0
+
+        count = 0
+        for word in text.split():
+            vowel_runs = len(self.__sylcount_vowel_runs.findall(word))
+            exceptions = len(self.__sylcount_exceptions.findall(word))
+            additional = len(self.__sylcount_additional.findall(word))
+            count += max(1, vowel_runs - exceptions + additional)
         return count
 
     @lru_cache(maxsize=128)
